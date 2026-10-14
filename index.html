@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dars jadvali va to'lovlar</title>
+<style>
+:root{
+  --bg:#eef1f4; --card:#ffffff; --ink:#17202a; --mute:#6b7785; --line:#dde3e9;
+  --paid:#1f8a4c; --paid-bg:#e3f3ea; --due:#c23b3b; --due-bg:#fbe7e7;
+  --accent:#128fa3; --accent-bg:#dff2f5; --bar:#34a853;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f1418; --card:#171e24; --ink:#e8edf2; --mute:#8d99a6; --line:#26303a;
+    --paid:#4cc27f; --paid-bg:#15301f; --due:#ee7b7b; --due-bg:#381a1a;
+    --accent:#4cc3d6; --accent-bg:#12303a; --bar:#3fae61;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums}
+main{max-width:760px;margin:0 auto;padding:16px 14px 60px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.month{display:flex;align-items:center;gap:6px}
+.month h1{font-size:1.25rem;margin:0;min-width:9.5rem;text-align:center;font-weight:700}
+.ico{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:1.1rem;line-height:1}
+.tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{border:0;background:none;padding:6px 14px;border-radius:999px;color:var(--mute);font-weight:600}
+.tabs button[aria-selected=true]{background:var(--ink);color:var(--bg)}
+
+/* summary */
+.sum{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.sum-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sum small{display:block;color:var(--mute);font-size:.8rem}
+.sum b{font-size:1.45rem;font-weight:700;letter-spacing:-.01em}
+.sum .g{color:var(--paid)} .sum .r{color:var(--due)}
+.split{display:flex;height:10px;border-radius:99px;overflow:hidden;margin-top:14px;background:var(--due-bg)}
+.split i{display:block;background:var(--paid);transition:width .35s}
+.sum-foot{margin-top:8px;color:var(--mute);font-size:.82rem;display:flex;justify-content:space-between}
+
+/* today */
+.today{margin:14px 0 6px;background:var(--accent-bg);border-radius:var(--r);padding:10px 14px;font-size:.92rem}
+.today strong{margin-right:6px}
+.today span{display:inline-block;margin-right:12px;white-space:nowrap}
+.today em{font-style:normal;font-weight:600}
+
+/* list */
+.bar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:16px 0 8px;flex-wrap:wrap}
+.chips{display:flex;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:.88rem;color:var(--mute)}
+.chip[aria-pressed=true]{border-color:var(--ink);color:var(--ink);font-weight:600}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 13px;font-weight:600}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.del{color:var(--due)}
+
+.list{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.who{all:unset;cursor:pointer;font-weight:600;grid-column:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who:focus-visible{outline:2px solid var(--accent)}
+.meta{grid-column:1;color:var(--mute);font-size:.84rem}
+.meta .t{color:var(--ink)}
+.pay{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.tog{border:0;border-radius:8px;padding:7px 12px;min-width:106px;font-weight:700;text-align:center}
+.tog.paid{background:var(--paid-bg);color:var(--paid)}
+.tog.due{background:var(--due-bg);color:var(--due)}
+.pay input[type=date]{border:0;background:none;color:var(--mute);font-size:.78rem;padding:0;width:96px;text-align:right}
+.empty{padding:26px 14px;text-align:center;color:var(--mute)}
+
+/* stats */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px}
+.chart{display:flex;align-items:flex-end;gap:8px;height:190px;overflow-x:auto;padding-top:20px}
+.col{flex:1 0 42px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px;border:0;background:none;padding:0}
+.col .v{font-size:.7rem;color:var(--mute)}
+.col .b{width:100%;background:var(--bar);border-radius:5px 5px 0 0;min-height:2px}
+.col.cur .b{background:var(--accent)}
+.col .m{font-size:.74rem;color:var(--mute);border-top:1px solid var(--line);width:100%;text-align:center;padding-top:3px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:8px 4px;border-top:1px solid var(--line);text-align:left}
+th{border-top:0;color:var(--mute);font-weight:500;font-size:.82rem}
+td:last-child,th:last-child{text-align:right}
+tr.total td{font-weight:700;border-top:2px solid var(--ink)}
+.link{all:unset;cursor:pointer;border-bottom:1px dashed var(--mute)}
+.rate{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.88rem;color:var(--mute)}
+.rate input{width:90px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--bg)}
+.foot{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.hint{text-align:center;color:var(--mute);font-size:.8rem;margin-top:8px}
+
+/* dialog */
+dialog{border:0;border-radius:14px;padding:0;width:min(420px,calc(100vw - 24px));background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+form.f{padding:18px;display:grid;gap:12px}
+form.f h2{margin:0;font-size:1.1rem}
+label{display:grid;gap:4px;font-size:.84rem;color:var(--mute)}
+label input,label textarea{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--bg);color:var(--ink);font-size:1rem}
+.days{display:flex;gap:5px;flex-wrap:wrap}
+.days label{display:block}
+.days input{position:absolute;opacity:0;pointer-events:none}
+.days span{display:block;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:.88rem}
+.days input:checked+span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.days input:focus-visible+span{outline:2px solid var(--accent)}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.acts .del{margin-right:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* login gate (Firebase) */
+#gate{position:fixed;inset:0;z-index:10;background:var(--bg);display:grid;place-items:center;padding:16px}
+#gate[hidden]{display:none}
+.gbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;width:min(360px,100%);display:grid;gap:12px}
+.gbox h2{margin:0;font-size:1.15rem}
+#g-err{color:var(--due);margin:0;font-size:.85rem;min-height:1.2em}
+
+/* print / PDF */
+#print{display:none}
+@media print{
+  body{background:#fff;color:#000;font-size:11pt}
+  main,dialog,#gate{display:none!important}
+  #print{display:block;color:#000}
+  #print h1{font-size:16pt;margin:0 0 4px}
+  #print h2{font-size:12pt;margin:18px 0 6px}
+  #print p{margin:0 0 8px;color:#333}
+  #print table{width:100%;border-collapse:collapse;font-size:10pt}
+  #print th,#print td{border:1px solid #999;padding:5px 7px;text-align:left}
+  #print th{background:#eee}
+  #print td.n,#print th.n{text-align:right;white-space:nowrap}
+  #print .ok{color:#1a7a43;font-weight:700}
+  #print .no{color:#b02a2a;font-weight:700}
+  #print tr.tot td{font-weight:700;background:#f4f4f4}
+  #print tr{break-inside:avoid}
+  @page{margin:14mm}
+}
+@media (prefers-reduced-motion:reduce){.split i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="month">
+      <button class="ico" id="prev" aria-label="Oldingi oy">‹</button>
+      <h1 id="mlabel"></h1>
+      <button class="ico" id="next" aria-label="Keyingi oy">›</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-list" aria-selected="true">Oy</button>
+      <button role="tab" id="tab-stats" aria-selected="false">Statistika</button>
+    </div>
+  </div>
+
+  <section id="view-list">
+    <div class="sum" id="sum"></div>
+    <div class="today" id="today" hidden></div>
+    <div class="bar">
+      <div class="chips" id="chips">
+        <button class="chip" data-f="all" aria-pressed="true">Hammasi</button>
+        <button class="chip" data-f="due" aria-pressed="false">To'lamagan</button>
+        <button class="chip" data-f="paid" aria-pressed="false">To'langan</button>
+      </div>
+      <button class="btn pri" id="add">+ O'quvchi</button>
+    </div>
+    <div class="list" id="list"></div>
+    <p class="hint">Ismni bossangiz tahrirlash oynasi ochiladi.</p>
+  </section>
+
+  <section id="view-stats" hidden>
+    <div class="card">
+      <div class="chart" id="chart"></div>
+      <div class="hint">Ustunni bossangiz oldingi oy summasini qo'lda kiritish mumkin.</div>
+    </div>
+    <div class="card">
+      <table id="tbl"></table>
+      <div class="rate">1 $ = <input id="rate" type="number" inputmode="numeric" min="1"> so'm</div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <button class="btn pri" id="xl">Excel yuklab olish</button>
+    <button class="btn pri" id="pdf">PDF yuklab olish</button>
+  </div>
+  <div class="foot">
+    <button class="btn" id="exp">Zaxira nusxa (JSON)</button>
+    <button class="btn" id="imp">Zaxirani yuklash</button>
+    <input type="file" id="file" accept="application/json" class="sr" tabindex="-1">
+  </div>
+  <p class="hint" id="storehint">Ma'lumotlar shu brauzerda saqlanadi. Boshqa qurilmaga o'tkazish uchun zaxira nusxadan foydalaning.</p>
+  <p class="hint" id="cloud" hidden><span id="cstat"></span> · <button class="link" id="signout">Chiqish</button></p>
+</main>
+
+<div id="gate" hidden>
+  <form class="gbox" id="gform">
+    <h2>Kirish</h2>
+    <label>Email<input id="g-mail" type="email" autocomplete="username" required></label>
+    <label>Parol<input id="g-pass" type="password" autocomplete="current-password" required></label>
+    <p id="g-err" role="alert"></p>
+    <button type="submit" class="btn pri">Kirish</button>
+  </form>
+</div>
+
+<section id="print"></section>
+
+<dialog id="dlg">
+  <form class="f" method="dialog" id="form">
+    <h2 id="dtitle">O'quvchi</h2>
+    <label>Ism<input id="f-name" required maxlength="60"></label>
+    <div>
+      <div style="font-size:.84rem;color:var(--mute);margin-bottom:4px">Dars kunlari</div>
+      <div class="days" id="f-days"></div>
+    </div>
+    <label>Vaqt<input id="f-time" placeholder="16:15-17:15" maxlength="20"></label>
+    <label>Oylik narx (so'm)<input id="f-price" type="number" inputmode="numeric" min="0" step="1000" placeholder="800000"></label>
+    <label>Izoh<textarea id="f-note" rows="2" maxlength="120"></textarea></label>
+    <div class="acts">
+      <button type="button" class="btn del" id="f-del">O'chirish</button>
+      <button type="button" class="btn" id="f-cancel">Bekor qilish</button>
+      <button type="submit" class="btn pri">Saqlash</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+"use strict";
+var KEY="dars-jadvali-v1";
+var MONTHS=["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+var SHORT=["Yan","Fev","Mar","Apr","May","Iyn","Iyl","Avg","Sen","Okt","Noy","Dek"];
+var DAYNAMES={1:"Du",2:"Se",3:"Ch",4:"Pa",5:"Ju",6:"Sh",0:"Ya"};
+var DAYORDER=[1,2,3,4,5,6,0];
+
+function seed(){
+  var S=[
+    ["Azizxon Mini food",[2,4,6],"18:30-19:30",1500,"2026-10-12",""],
+    ["Abror aka",[2,6],"17:30-18:30",1000,"2026-10-10",""],
+    ["Abdumajid",[2,4,6],"16:15-17:15",800,"2026-10-10",""],
+    ["Ibroximjon",[2,4,6],"14:00-15:00",600,"2026-10-13",""],
+    ["Amirullox",[2,4,6],"13:00-14:00",800,"2026-10-03",""],
+    ["Farangiz cefr",[2,4,6],"12:00",1000,null,""],
+    ["Apa singil 5 sinf",[2,4,6],"11:30-12:30",1200,"2026-10-08",""],
+    ["Abdulbosid jiyan",[],"10:00-11:00",400,null,"Marvelda"],
+    ["Saodat",[1,3,5],"13:00-14:00",600,"2026-10-07",""],
+    ["Firdavsxon",[1,3,5],"15:15-16:15",900,null,""],
+    ["Abdulbosid",[1,3,5],"16:15-17:15",1200,"2026-10-10",""],
+    ["Azizxon Mini food",[1,3,5],"18:15-19:15",0,null,"2-dars (to'lov yuqorida)"]
+  ];
+  var st=[],pay={"2026-10":{}};
+  S.forEach(function(s,i){
+    var id="s"+(i+1);
+    st.push({id:id,name:s[0],days:s[1],time:s[2],price:s[3]*1000,note:s[5]});
+    if(s[4]) pay["2026-10"][id]={date:s[4],amount:s[3]*1000};
+  });
+  return {
+    students:st,payments:pay,rate:12000,
+    manual:{"2025-12":10287000,"2026-01":13338000,"2026-02":16130000,"2026-03":14686000,
+      "2026-04":17322000,"2026-05":14175000,"2026-06":18299000,"2026-07":16418000,
+      "2026-08":15000000,"2026-09":13000000}
+  };
+}
+function load(){
+  try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&d.students)return d;}}catch(e){}
+  return seed();
+}
+var db=load();
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}
+  if(window.TrackerApp&&window.TrackerApp.onSave)window.TrackerApp.onSave(db);
+}
+
+var now=new Date();
+function ymOf(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+function todayStr(){var d=new Date();return ymOf(d)+"-"+String(d.getDate()).padStart(2,"0");}
+var curYM=ymOf(now), selYM=curYM, filter="all";
+
+function money(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+" so'm";}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function ymLabel(ym){var p=ym.split("-");return MONTHS[+p[1]-1]+" "+p[0];}
+function shiftYM(ym,n){var p=ym.split("-"),d=new Date(+p[0],+p[1]-1+n,1);return ymOf(d);}
+function $(id){return document.getElementById(id);}
+
+function paidMap(ym){return db.payments[ym]||{};}
+function monthPaidSum(ym){
+  var p=db.payments[ym];
+  if(p){var t=0;for(var k in p)t+=p[k].amount||0;return t;}
+  return db.manual[ym]||0;
+}
+function hasData(ym){return !!db.payments[ym];}
+
+/* ---------- month view ---------- */
+function startMin(t){var m=/(\d{1,2}):(\d{2})/.exec(t||"");return m?(+m[1])*60+(+m[2]):9999;}
+
+function renderSummary(){
+  var pm=paidMap(selYM),paid=0,due=0;
+  db.students.forEach(function(s){
+    if(!s.price)return;
+    if(pm[s.id])paid+=pm[s.id].amount||s.price;else due+=s.price;
+  });
+  var tot=paid+due,pct=tot?paid/tot*100:0;
+  $("sum").innerHTML=
+   '<div class="sum-row">'+
+   '<div><small>To\'landi</small><b class="g">'+money(paid)+'</b></div>'+
+   '<div><small>Qoldi</small><b class="r">'+money(due)+'</b></div>'+
+   '<div><small>Jami</small><b>'+money(tot)+'</b></div></div>'+
+   '<div class="split" role="img" aria-label="To\'langan ulush '+Math.round(pct)+' foiz"><i style="width:'+pct+'%"></i></div>'+
+   '<div class="sum-foot"><span>'+Math.round(pct)+'% to\'langan</span><span>≈ '+(paid/db.rate).toFixed(0)+' $ tushdi</span></div>';
+}
+
+function renderToday(){
+  var el=$("today");
+  if(selYM!==curYM){el.hidden=true;return;}
+  var d=new Date().getDay();
+  var L=db.students.filter(function(s){return s.days.indexOf(d)>-1;})
+    .sort(function(a,b){return startMin(a.time)-startMin(b.time);});
+  if(!L.length){el.hidden=true;return;}
+  el.hidden=false;
+  el.innerHTML='<strong>Bugun:</strong>'+L.map(function(s){
+    return '<span><em>'+esc((s.time||"").split("-")[0])+'</em> '+esc(s.name)+'</span>';}).join("");
+}
+
+function dayText(s){
+  if(!s.days.length)return "";
+  return DAYORDER.filter(function(d){return s.days.indexOf(d)>-1;}).map(function(d){return DAYNAMES[d];}).join(" ");
+}
+function dmy(iso){if(!iso)return "";var p=iso.split("-");return +p[2]+"."+p[1];}
+
+function renderList(){
+  var pm=paidMap(selYM);
+  var L=db.students.slice().sort(function(a,b){return startMin(a.time)-startMin(b.time);})
+    .filter(function(s){
+      if(filter==="paid")return !!pm[s.id];
+      if(filter==="due")return !pm[s.id]&&s.price>0;
+      return true;});
+  if(!L.length){
+    $("list").innerHTML='<div class="empty">'+(db.students.length?'Bu filtrda hech kim yo\'q.':'Hali o\'quvchi yo\'q. «+ O\'quvchi» tugmasini bosing.')+'</div>';
+    return;
+  }
+  $("list").innerHTML=L.map(function(s){
+    var p=pm[s.id],meta=[];
+    if(s.time)meta.push('<span class="t">'+esc(s.time)+'</span>');
+    var dt=dayText(s);if(dt)meta.push(dt);
+    if(s.price)meta.push(money(s.price));
+    if(s.note)meta.push(esc(s.note));
+    var pay="";
+    if(s.price){
+      pay='<button class="tog '+(p?'paid':'due')+'" data-id="'+s.id+'" aria-pressed="'+(!!p)+'">'+(p?'✓ To\'ladi':'To\'lamadi')+'</button>'+
+          (p?'<input type="date" data-date="'+s.id+'" value="'+esc(p.date||"")+'" aria-label="To\'lov sanasi">':'');
+    }
+    return '<div class="row"><button class="who" data-edit="'+s.id+'">'+esc(s.name)+'</button>'+
+           '<div class="meta">'+meta.join(" · ")+'</div><div class="pay">'+pay+'</div></div>';
+  }).join("");
+}
+
+function renderMonth(){
+  $("mlabel").textContent=ymLabel(selYM);
+  renderSummary();renderToday();renderList();
+}
+
+/* ---------- stats ---------- */
+function allMonths(){
+  var keys=Object.keys(db.manual).concat(Object.keys(db.payments),[curYM]).sort();
+  var out=[],m=keys[0],end=keys[keys.length-1];
+  while(m<=end&&out.length<120){out.push(m);m=shiftYM(m,1);}
+  return out;
+}
+function renderStats(){
+  var ms=allMonths(),vals=ms.map(monthPaidSum),max=Math.max.apply(null,vals.concat([1]));
+  $("chart").innerHTML=ms.map(function(m,i){
+    var v=vals[i],p=m.split("-");
+    return '<button class="col'+(m===curYM?' cur':'')+'" data-m="'+m+'" title="'+ymLabel(m)+'">'+
+      '<span class="v">'+(v?(v/1e6).toFixed(1):'')+'</span>'+
+      '<span class="b" style="height:'+(v/max*100*0.78)+'%"></span>'+
+      '<span class="m">'+SHORT[+p[1]-1]+'</span></button>';
+  }).join("");
+  var total=vals.reduce(function(a,b){return a+b;},0);
+  var rows=ms.slice().reverse().map(function(m){
+    var manual=!hasData(m);
+    var v=monthPaidSum(m);
+    var cell=manual?'<button class="link" data-m="'+m+'">'+money(v)+'</button>':money(v);
+    return '<tr><td>'+ymLabel(m)+'</td><td>'+cell+'</td></tr>';
+  }).join("");
+  $("tbl").innerHTML='<tr><th>Oy</th><th>Tushum</th></tr>'+rows+
+    '<tr class="total"><td>Jami</td><td>'+money(total)+'</td></tr>'+
+    '<tr><td>Dollarda</td><td>'+(total/db.rate).toFixed(0)+' $</td></tr>';
+  $("rate").value=db.rate;
+}
+
+/* ---------- events ---------- */
+$("prev").onclick=function(){selYM=shiftYM(selYM,-1);renderMonth();};
+$("next").onclick=function(){selYM=shiftYM(selYM,1);renderMonth();};
+
+function showTab(t){
+  var s=t==="stats";
+  $("view-list").hidden=s;$("view-stats").hidden=!s;
+  $("tab-list").setAttribute("aria-selected",!s);
+  $("tab-stats").setAttribute("aria-selected",s);
+  if(s)renderStats();else renderMonth();
+}
+$("tab-list").onclick=function(){showTab("list");};
+$("tab-stats").onclick=function(){showTab("stats");};
+
+$("chips").onclick=function(e){
+  var b=e.target.closest("[data-f]");if(!b)return;
+  filter=b.dataset.f;
+  [].forEach.call($("chips").children,function(c){c.setAttribute("aria-pressed",c===b);});
+  renderList();
+};
+
+$("list").onclick=function(e){
+  var t=e.target.closest(".tog");
+  if(t){
+    var id=t.dataset.id,s=db.students.find(function(x){return x.id===id;});
+    var pm=db.payments[selYM]=db.payments[selYM]||{};
+    if(pm[id])delete pm[id];
+    else{
+      var d=selYM===curYM?todayStr():selYM+"-01";
+      pm[id]={date:d,amount:s.price};
+    }
+    save();renderMonth();return;
+  }
+  var w=e.target.closest("[data-edit]");
+  if(w)openDlg(w.dataset.edit);
+};
+$("list").onchange=function(e){
+  var id=e.target.dataset&&e.target.dataset.date;
+  if(id&&db.payments[selYM]&&db.payments[selYM][id]){
+    db.payments[selYM][id].date=e.target.value;save();
+  }
+};
+
+$("chart").onclick=function(e){var b=e.target.closest("[data-m]");if(b)editManual(b.dataset.m);};
+$("tbl").onclick=function(e){var b=e.target.closest("[data-m]");if(b)editManual(b.dataset.m);};
+function editManual(m){
+  if(hasData(m)){alert(ymLabel(m)+" uchun to'lovlar alohida belgilangan. Summani «Oy» bo'limida o'zgartiring.");return;}
+  var v=prompt(ymLabel(m)+" tushumi (so'm):",db.manual[m]||"");
+  if(v===null)return;
+  var n=parseInt(String(v).replace(/\D/g,""),10);
+  if(isNaN(n)||n<=0)delete db.manual[m];else db.manual[m]=n;
+  save();renderStats();
+}
+$("rate").onchange=function(){
+  var n=parseInt($("rate").value,10);
+  if(n>0){db.rate=n;save();renderStats();}
+};
+
+/* ---------- dialog ---------- */
+var dlg=$("dlg"),editId=null;
+$("f-days").innerHTML=DAYORDER.map(function(d){
+  return '<label><input type="checkbox" value="'+d+'"><span>'+DAYNAMES[d]+'</span></label>';}).join("");
+function openDlg(id){
+  editId=id||null;
+  var s=id?db.students.find(function(x){return x.id===id;}):{name:"",days:[],time:"",price:"",note:""};
+  $("dtitle").textContent=id?"Tahrirlash":"Yangi o'quvchi";
+  $("f-name").value=s.name;$("f-time").value=s.time;$("f-price").value=s.price||"";$("f-note").value=s.note||"";
+  [].forEach.call($("f-days").querySelectorAll("input"),function(i){i.checked=s.days.indexOf(+i.value)>-1;});
+  $("f-del").style.display=id?"":"none";
+  dlg.showModal();$("f-name").focus();
+}
+$("add").onclick=function(){openDlg(null);};
+$("f-cancel").onclick=function(){dlg.close();};
+$("f-del").onclick=function(){
+  if(!editId)return;
+  var s=db.students.find(function(x){return x.id===editId;});
+  if(!confirm(s.name+" o'chirilsinmi? Oldingi oylardagi to'lov yozuvlari ham o'chadi."))return;
+  db.students=db.students.filter(function(x){return x.id!==editId;});
+  for(var m in db.payments)delete db.payments[m][editId];
+  save();dlg.close();renderMonth();
+};
+$("form").onsubmit=function(e){
+  e.preventDefault();
+  var days=[].filter.call($("f-days").querySelectorAll("input"),function(i){return i.checked;}).map(function(i){return +i.value;});
+  var price=parseInt($("f-price").value,10)||0;
+  var rec={name:$("f-name").value.trim(),days:days,time:$("f-time").value.trim(),price:price,note:$("f-note").value.trim()};
+  if(!rec.name)return;
+  if(editId){
+    var s=db.students.find(function(x){return x.id===editId;});
+    Object.assign(s,rec);
+  }else{
+    rec.id="s"+Date.now().toString(36);
+    db.students.push(rec);
+  }
+  save();dlg.close();renderMonth();
+};
+
+/* ---------- backup ---------- */
+$("exp").onclick=function(){
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,1)],{type:"application/json"}));
+  a.download="dars-jadvali-"+todayStr()+".json";
+  document.body.appendChild(a);a.click();a.remove();
+};
+$("imp").onclick=function(){$("file").click();};
+$("file").onchange=function(){
+  var f=this.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      if(!d.students||!d.payments)throw 0;
+      if(!confirm("Hozirgi ma'lumotlar zaxiradagi bilan almashtirilsinmi?"))return;
+      db=d;db.manual=db.manual||{};db.rate=db.rate||12000;
+      save();showTab("list");
+    }catch(e){alert("Fayl noto'g'ri formatda.");}
+  };
+  r.readAsText(f);this.value="";
+};
+
+/* ---------- Excel / PDF ---------- */
+function monthData(ym){
+  var pm=paidMap(ym),paid=0,due=0;
+  var list=db.students.slice().sort(function(a,b){return startMin(a.time)-startMin(b.time);}).map(function(s){
+    var p=pm[s.id];
+    if(s.price){if(p)paid+=p.amount||s.price;else due+=s.price;}
+    return {name:s.name,days:dayText(s),time:s.time||"",price:s.price||0,
+      paid:!!p,date:p?(p.date||""):"",note:s.note||""};
+  });
+  return {list:list,paid:paid,due:due};
+}
+function statsData(){
+  var ms=allMonths(),total=0;
+  var rows=ms.map(function(m){var v=monthPaidSum(m);total+=v;return [ymLabel(m),v];});
+  return {rows:rows,total:total};
+}
+
+$("xl").onclick=function(){
+  if(!window.XLSX){
+    alert("Excel kutubxonasi yuklanmadi (internet kerak). Hozircha PDF tugmasidan foydalaning.");
+    return;
+  }
+  var d=monthData(selYM),n=d.list.length;
+  var a=[["№","Ism","Kunlar","Vaqt","Narx (so'm)","Holat","To'lov sanasi","Izoh"]];
+  d.list.forEach(function(r,i){
+    a.push([i+1,r.name,r.days,r.time,r.price,r.price?(r.paid?"To'ladi":"To'lamadi"):"",r.date,r.note]);
+  });
+  a.push([]);
+  a.push(["","To'landi","","",d.paid]);
+  a.push(["","Qoldi","","",d.due]);
+  a.push(["","Jami","","",d.paid+d.due]);
+  var ws1=XLSX.utils.aoa_to_sheet(a);
+  ws1["!cols"]=[{wch:4},{wch:24},{wch:14},{wch:13},{wch:14},{wch:12},{wch:14},{wch:26}];
+
+  var st=statsData();
+  var b=[["Oy","Tushum (so'm)"]].concat(st.rows);
+  b.push([]);
+  b.push(["Jami",st.total]);
+  b.push(["Dollarda ($)",Math.round(st.total/db.rate)]);
+  b.push(["Kurs (so'm)",db.rate]);
+  var ws2=XLSX.utils.aoa_to_sheet(b);
+  ws2["!cols"]=[{wch:20},{wch:18}];
+
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws1,ymLabel(selYM).slice(0,31));
+  XLSX.utils.book_append_sheet(wb,ws2,"Statistika");
+  XLSX.writeFile(wb,"dars-jadvali-"+selYM+".xlsx");
+};
+
+$("pdf").onclick=function(){
+  var d=monthData(selYM),st=statsData();
+  var h='<h1>Dars jadvali va to\'lovlar</h1><p>'+ymLabel(selYM)+'</p>'+
+    '<table><tr><th>№</th><th>Ism</th><th>Kunlar</th><th>Vaqt</th><th class="n">Narx</th><th>Holat</th><th>Sana</th></tr>';
+  d.list.forEach(function(r,i){
+    h+='<tr><td>'+(i+1)+'</td><td>'+esc(r.name)+(r.note?' <small>('+esc(r.note)+')</small>':'')+'</td><td>'+esc(r.days)+
+       '</td><td>'+esc(r.time)+'</td><td class="n">'+(r.price?money(r.price):'—')+'</td><td>'+
+       (r.price?(r.paid?'<span class="ok">To\'ladi</span>':'<span class="no">To\'lamadi</span>'):'')+
+       '</td><td>'+dmy(r.date)+'</td></tr>';
+  });
+  h+='<tr class="tot"><td colspan="4">To\'landi</td><td class="n" colspan="3">'+money(d.paid)+'</td></tr>'+
+     '<tr class="tot"><td colspan="4">Qoldi</td><td class="n" colspan="3">'+money(d.due)+'</td></tr>'+
+     '<tr class="tot"><td colspan="4">Jami</td><td class="n" colspan="3">'+money(d.paid+d.due)+'</td></tr></table>'+
+     '<h2>Oylik tushum</h2><table><tr><th>Oy</th><th class="n">Tushum</th></tr>';
+  st.rows.forEach(function(r){h+='<tr><td>'+r[0]+'</td><td class="n">'+money(r[1])+'</td></tr>';});
+  h+='<tr class="tot"><td>Jami</td><td class="n">'+money(st.total)+'</td></tr>'+
+     '<tr class="tot"><td>Dollarda</td><td class="n">'+Math.round(st.total/db.rate)+' $</td></tr></table>';
+  $("print").innerHTML=h;
+  var old=document.title;
+  document.title="dars-jadvali-"+selYM;
+  window.print();
+  document.title=old;
+};
+
+/* ---------- hook for cloud sync ---------- */
+function refresh(){if($("view-stats").hidden)renderMonth();else renderStats();}
+window.TrackerApp={
+  get:function(){return db;},
+  set:function(d){
+    d.students=d.students||[];d.payments=d.payments||{};d.manual=d.manual||{};d.rate=d.rate||12000;
+    db=d;
+    try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){}
+    refresh();
+  },
+  onSave:null
+};
+
+renderMonth();
+})();
+</script>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,doc,onSnapshot,setDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+/* 1) Firebase Console → Project settings → Your apps → Web app → firebaseConfig ni shu yerga qo'ying */
+const firebaseConfig={
+  apiKey:"AIzaSyB4X_pZPIqORmmXKhcW2f8lPOe2RIIH2bM",
+  authDomain:"tracker-8ae79.firebaseapp.com",
+  projectId:"tracker-8ae79",
+  storageBucket:"tracker-8ae79.firebasestorage.app",
+  messagingSenderId:"256977321551",
+  appId:"1:256977321551:web:09eb1529778d13564ef43a"
+};
+const COLLECTION="tutors";   // hujjat: tutors/{uid}
+
+(function(){
+  if(/^PASTE/.test(firebaseConfig.apiKey))return;          // sozlanmagan bo'lsa, faqat brauzer rejimi
+  var App=window.TrackerApp,$=function(id){return document.getElementById(id);};
+  var auth=getAuth(initializeApp(firebaseConfig)),fs=getFirestore(auth.app);
+  var unsub=null,timer=null,ref=null;
+  $("gate").hidden=false;
+
+  function stat(t){$("cstat").textContent=t;}
+
+  $("gform").onsubmit=function(e){
+    e.preventDefault();$("g-err").textContent="";
+    signInWithEmailAndPassword(auth,$("g-mail").value.trim(),$("g-pass").value).catch(function(err){
+      var bad=["auth/invalid-credential","auth/wrong-password","auth/user-not-found","auth/invalid-email"];
+      $("g-err").textContent=bad.indexOf(err.code)>-1?"Email yoki parol noto'g'ri.":
+        err.code==="auth/too-many-requests"?"Juda ko'p urinish. Birozdan keyin qayta urining.":
+        "Kirib bo'lmadi: "+(err.code||err.message);
+    });
+  };
+  $("signout").onclick=function(){signOut(auth);};
+
+  function push(d){
+    clearTimeout(timer);stat("Saqlanmoqda…");
+    timer=setTimeout(function(){
+      timer=null;
+      setDoc(ref,JSON.parse(JSON.stringify(d)))
+        .then(function(){stat("Sinxron ✓");})
+        .catch(function(err){stat("Saqlanmadi: "+(err.code||err.message));});
+    },400);
+  }
+
+  onAuthStateChanged(auth,function(user){
+    if(unsub){unsub();unsub=null;}
+    if(!user){
+      App.onSave=null;$("gate").hidden=false;$("cloud").hidden=true;$("storehint").hidden=false;return;
+    }
+    $("gate").hidden=true;$("g-pass").value="";
+    $("cloud").hidden=false;$("storehint").hidden=true;
+    stat("Ulanmoqda…");
+    ref=doc(fs,COLLECTION,user.uid);
+    unsub=onSnapshot(ref,function(snap){
+      if(!snap.exists()){                 // birinchi kirish: hozirgi ma'lumotni bulutga yuklaymiz
+        push(App.get());App.onSave=push;return;
+      }
+      App.onSave=push;
+      if(snap.metadata.hasPendingWrites||timer)return;   // o'zimizning yangi o'zgarishni ustiga yozmaymiz
+      App.set(snap.data());stat("Sinxron ✓");
+    },function(err){stat("Xato: "+(err.code||err.message));});
+  });
+})();
+</script>
+</body>
+</html>
