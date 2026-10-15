@@ -83,6 +83,11 @@ button{cursor:pointer}
 .tog{border:0;border-radius:8px;padding:7px 12px;min-width:106px;font-weight:700;text-align:center}
 .tog.paid{background:var(--paid-bg);color:var(--paid)}
 .tog.due{background:var(--due-bg);color:var(--due)}
+.tog.part{background:var(--accent-bg);color:var(--accent)}
+.rem{color:var(--mute);font-size:.78rem}
+.parts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pchip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;font-size:.78rem;color:var(--mute)}
+.pchip.add{border-style:dashed;color:var(--accent);font-weight:600}
 .pay input[type=date]{border:0;background:none;color:var(--mute);font-size:.78rem;padding:0;width:96px;text-align:right}
 .empty{padding:26px 14px;text-align:center;color:var(--mute)}
 
@@ -237,6 +242,19 @@ label input,label textarea{border:1px solid var(--line);border-radius:8px;paddin
   </form>
 </dialog>
 
+<dialog id="pdlg">
+  <form class="f" method="dialog" id="pform">
+    <h2 id="ptitle">To'lov</h2>
+    <label>Summa (so'm)<input id="p-amt" type="number" inputmode="numeric" min="1" step="1000" required></label>
+    <label>Sana<input id="p-date" type="date" required></label>
+    <div class="acts">
+      <button type="button" class="btn del" id="p-del">O'chirish</button>
+      <button type="button" class="btn" id="p-cancel">Bekor qilish</button>
+      <button type="submit" class="btn pri">Saqlash</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 (function(){
   var root=document.documentElement,btn=document.getElementById("theme");
@@ -317,9 +335,34 @@ function shiftYM(ym,n){var p=ym.split("-"),d=new Date(+p[0],+p[1]-1+n,1);return 
 function $(id){return document.getElementById(id);}
 
 function paidMap(ym){return db.payments[ym]||{};}
+function num(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0");}
+/* bitta o'quvchining oy ichidagi to'lovlari: eski {date,amount} va yangi {parts:[...]} formatlari */
+function partsOf(p,price){
+  if(!p)return [];
+  if(Array.isArray(p.parts))return p.parts;
+  return [{date:p.date||"",amount:p.amount!=null?p.amount:(price||0)}];
+}
+function info(s,ym){
+  var parts=partsOf(paidMap(ym)[s.id],s.price),sum=0;
+  parts.forEach(function(x){sum+=+x.amount||0;});
+  var rem=Math.max(0,(s.price||0)-sum);
+  return {parts:parts,sum:sum,rem:rem,status:sum<=0?"due":(rem>0?"part":"paid")};
+}
+function setParts(ym,id,arr){
+  var pm=db.payments[ym]=db.payments[ym]||{};
+  arr.sort(function(a,b){a=a.date||"";b=b.date||"";return a<b?-1:a>b?1:0;});
+  if(arr.length)pm[id]={parts:arr};else delete pm[id];
+}
 function monthPaidSum(ym){
   var p=db.payments[ym];
-  if(p){var t=0;for(var k in p)t+=p[k].amount||0;return t;}
+  if(p){
+    var t=0;
+    for(var k in p){
+      var st=db.students.find(function(x){return x.id===k;});
+      partsOf(p[k],st&&st.price).forEach(function(x){t+=+x.amount||0;});
+    }
+    return t;
+  }
   return db.manual[ym]||0;
 }
 function hasData(ym){return !!db.payments[ym];}
@@ -328,12 +371,13 @@ function hasData(ym){return !!db.payments[ym];}
 function startMin(t){var m=/(\d{1,2}):(\d{2})/.exec(t||"");return m?(+m[1])*60+(+m[2]):9999;}
 
 function renderSummary(){
-  var pm=paidMap(selYM),paid=0,due=0;
+  var paid=0,due=0,tot=0;
   db.students.forEach(function(s){
     if(!s.price)return;
-    if(pm[s.id])paid+=pm[s.id].amount||s.price;else due+=s.price;
+    var i=info(s,selYM);
+    paid+=i.sum;due+=i.rem;tot+=s.price;
   });
-  var tot=paid+due,pct=tot?paid/tot*100:0;
+  var pct=tot?Math.min(100,paid/tot*100):0;
   $("sum").innerHTML=
    '<div class="sum-row">'+
    '<div><small>To\'landi</small><b class="g">'+money(paid)+'</b></div>'+
@@ -362,29 +406,35 @@ function dayText(s){
 function dmy(iso){if(!iso)return "";var p=iso.split("-");return +p[2]+"."+p[1];}
 
 function renderList(){
-  var pm=paidMap(selYM);
   var L=db.students.slice().sort(function(a,b){return startMin(a.time)-startMin(b.time);})
     .filter(function(s){
-      if(filter==="paid")return !!pm[s.id];
-      if(filter==="due")return !pm[s.id]&&s.price>0;
+      if(filter==="paid")return s.price>0&&info(s,selYM).status==="paid";
+      if(filter==="due")return s.price>0&&info(s,selYM).status!=="paid";
       return true;});
   if(!L.length){
     $("list").innerHTML='<div class="empty">'+(db.students.length?'Bu filtrda hech kim yo\'q.':'Hali o\'quvchi yo\'q. «+ O\'quvchi» tugmasini bosing.')+'</div>';
     return;
   }
   $("list").innerHTML=L.map(function(s){
-    var p=pm[s.id],meta=[];
+    var meta=[];
     if(s.time)meta.push('<span class="t">'+esc(s.time)+'</span>');
     var dt=dayText(s);if(dt)meta.push(dt);
     if(s.price)meta.push(money(s.price));
     if(s.note)meta.push(esc(s.note));
-    var pay="";
+    var pay="",parts="";
     if(s.price){
-      pay='<button class="tog '+(p?'paid':'due')+'" data-id="'+s.id+'" aria-pressed="'+(!!p)+'">'+(p?'✓ To\'ladi':'To\'lamadi')+'</button>'+
-          (p?'<input type="date" data-date="'+s.id+'" value="'+esc(p.date||"")+'" aria-label="To\'lov sanasi">':'');
+      var i=info(s,selYM);
+      var label=i.status==="paid"?'✓ To\'ladi':(i.status==="part"?'Qisman':'To\'lamadi');
+      pay='<button class="tog '+i.status+'" data-id="'+s.id+'" aria-pressed="'+(i.status==="paid")+'">'+label+'</button>'+
+          (i.status==="part"?'<span class="rem">Qoldi '+num(i.rem)+'</span>':'');
+      parts=i.parts.map(function(x,k){
+        return '<button class="pchip" data-pedit="'+s.id+'" data-pi="'+k+'">'+esc(dmy(x.date))+' · '+num(x.amount)+'</button>';
+      }).join("");
+      if(i.rem>0)parts+='<button class="pchip add" data-padd="'+s.id+'">+ qism to\'lov</button>';
     }
     return '<div class="row"><button class="who" data-edit="'+s.id+'">'+esc(s.name)+'</button>'+
-           '<div class="meta">'+meta.join(" · ")+'</div><div class="pay">'+pay+'</div></div>';
+           '<div class="meta">'+meta.join(" · ")+'</div><div class="pay">'+pay+'</div>'+
+           (parts?'<div class="parts">'+parts+'</div>':'')+'</div>';
   }).join("");
 }
 
@@ -443,26 +493,27 @@ $("chips").onclick=function(e){
   renderList();
 };
 
+function defDate(){return selYM===curYM?todayStr():selYM+"-01";}
 $("list").onclick=function(e){
   var t=e.target.closest(".tog");
   if(t){
     var id=t.dataset.id,s=db.students.find(function(x){return x.id===id;});
-    var pm=db.payments[selYM]=db.payments[selYM]||{};
-    if(pm[id])delete pm[id];
-    else{
-      var d=selYM===curYM?todayStr():selYM+"-01";
-      pm[id]={date:d,amount:s.price};
+    var i=info(s,selYM),arr=i.parts.map(function(x){return {date:x.date,amount:x.amount};});
+    if(i.status==="paid"){
+      if(arr.length>1&&!confirm("Bu oydagi barcha to'lovlar o'chirilsinmi?"))return;
+      arr=[];
+    }else{
+      arr.push({date:defDate(),amount:i.status==="part"?i.rem:s.price});
     }
+    setParts(selYM,id,arr);
     save();renderMonth();return;
   }
+  var pe=e.target.closest("[data-pedit]");
+  if(pe){openPay(pe.dataset.pedit,+pe.dataset.pi);return;}
+  var pa=e.target.closest("[data-padd]");
+  if(pa){openPay(pa.dataset.padd,-1);return;}
   var w=e.target.closest("[data-edit]");
   if(w)openDlg(w.dataset.edit);
-};
-$("list").onchange=function(e){
-  var id=e.target.dataset&&e.target.dataset.date;
-  if(id&&db.payments[selYM]&&db.payments[selYM][id]){
-    db.payments[selYM][id].date=e.target.value;save();
-  }
 };
 
 $("chart").onclick=function(e){var b=e.target.closest("[data-m]");if(b)editManual(b.dataset.m);};
@@ -519,6 +570,33 @@ $("form").onsubmit=function(e){
   save();dlg.close();renderMonth();
 };
 
+/* ---------- qisman to'lov oynasi ---------- */
+var pdlg=$("pdlg"),pSt=null,pIdx=-1;
+function openPay(id,idx){
+  pSt=db.students.find(function(x){return x.id===id;});if(!pSt)return;
+  pIdx=idx;
+  var i=info(pSt,selYM),x=idx>=0?i.parts[idx]:null;
+  $("ptitle").textContent=pSt.name+(x?" — to'lovni tahrirlash":" — to'lov qo'shish");
+  $("p-amt").value=x?x.amount:(i.rem||pSt.price);
+  $("p-date").value=x?(x.date||defDate()):defDate();
+  $("p-del").style.display=x?"":"none";
+  pdlg.showModal();$("p-amt").focus();$("p-amt").select();
+}
+$("p-cancel").onclick=function(){pdlg.close();};
+$("p-del").onclick=function(){
+  var arr=info(pSt,selYM).parts.map(function(x){return {date:x.date,amount:x.amount};});
+  arr.splice(pIdx,1);
+  setParts(selYM,pSt.id,arr);save();pdlg.close();renderMonth();
+};
+$("pform").onsubmit=function(e){
+  e.preventDefault();
+  var amt=parseInt($("p-amt").value,10),date=$("p-date").value;
+  if(!(amt>0)||!date)return;
+  var arr=info(pSt,selYM).parts.map(function(x){return {date:x.date,amount:x.amount};});
+  if(pIdx>=0)arr[pIdx]={date:date,amount:amt};else arr.push({date:date,amount:amt});
+  setParts(selYM,pSt.id,arr);save();pdlg.close();renderMonth();
+};
+
 /* ---------- backup ---------- */
 $("exp").onclick=function(){
   var a=document.createElement("a");
@@ -544,12 +622,14 @@ $("file").onchange=function(){
 
 /* ---------- Excel / PDF ---------- */
 function monthData(ym){
-  var pm=paidMap(ym),paid=0,due=0;
+  var paid=0,due=0;
   var list=db.students.slice().sort(function(a,b){return startMin(a.time)-startMin(b.time);}).map(function(s){
-    var p=pm[s.id];
-    if(s.price){if(p)paid+=p.amount||s.price;else due+=s.price;}
+    var i=info(s,ym);
+    if(s.price){paid+=i.sum;due+=i.rem;}
     return {name:s.name,days:dayText(s),time:s.time||"",price:s.price||0,
-      paid:!!p,date:p?(p.date||""):"",note:s.note||""};
+      status:i.status,sum:i.sum,rem:i.rem,
+      dates:i.parts.map(function(x){return dmy(x.date)+(i.parts.length>1?" ("+num(x.amount)+")":"");}).join(", "),
+      note:s.note||""};
   });
   return {list:list,paid:paid,due:due};
 }
@@ -565,16 +645,16 @@ $("xl").onclick=function(){
     return;
   }
   var d=monthData(selYM),n=d.list.length;
-  var a=[["№","Ism","Kunlar","Vaqt","Narx (so'm)","Holat","To'lov sanasi","Izoh"]];
+  var a=[["№","Ism","Kunlar","Vaqt","Narx (so'm)","To'langan","Qoldi","Holat","To'lov sanalari","Izoh"]];
   d.list.forEach(function(r,i){
-    a.push([i+1,r.name,r.days,r.time,r.price,r.price?(r.paid?"To'ladi":"To'lamadi"):"",r.date,r.note]);
+    a.push([i+1,r.name,r.days,r.time,r.price,r.price?r.sum:"",r.price?r.rem:"",r.price?(r.status==="paid"?"To'ladi":(r.status==="part"?"Qisman":"To'lamadi")):"",r.dates,r.note]);
   });
   a.push([]);
   a.push(["","To'landi","","",d.paid]);
   a.push(["","Qoldi","","",d.due]);
   a.push(["","Jami","","",d.paid+d.due]);
   var ws1=XLSX.utils.aoa_to_sheet(a);
-  ws1["!cols"]=[{wch:4},{wch:24},{wch:14},{wch:13},{wch:14},{wch:12},{wch:14},{wch:26}];
+  ws1["!cols"]=[{wch:4},{wch:24},{wch:14},{wch:13},{wch:14},{wch:13},{wch:13},{wch:12},{wch:22},{wch:26}];
 
   var st=statsData();
   var b=[["Oy","Tushum (so'm)"]].concat(st.rows);
@@ -594,16 +674,17 @@ $("xl").onclick=function(){
 $("pdf").onclick=function(){
   var d=monthData(selYM),st=statsData();
   var h='<h1>Dars jadvali va to\'lovlar</h1><p>'+ymLabel(selYM)+'</p>'+
-    '<table><tr><th>№</th><th>Ism</th><th>Kunlar</th><th>Vaqt</th><th class="n">Narx</th><th>Holat</th><th>Sana</th></tr>';
+    '<table><tr><th>№</th><th>Ism</th><th>Kunlar</th><th>Vaqt</th><th class="n">Narx</th><th class="n">To\'langan</th><th>Holat</th><th>Sana</th></tr>';
   d.list.forEach(function(r,i){
     h+='<tr><td>'+(i+1)+'</td><td>'+esc(r.name)+(r.note?' <small>('+esc(r.note)+')</small>':'')+'</td><td>'+esc(r.days)+
        '</td><td>'+esc(r.time)+'</td><td class="n">'+(r.price?money(r.price):'—')+'</td><td>'+
-       (r.price?(r.paid?'<span class="ok">To\'ladi</span>':'<span class="no">To\'lamadi</span>'):'')+
-       '</td><td>'+dmy(r.date)+'</td></tr>';
+       (r.price?money(r.sum):'')+'</td><td>'+
+       (r.price?(r.status==="paid"?'<span class="ok">To\'ladi</span>':(r.status==="part"?'<span class="no">Qisman</span>':'<span class="no">To\'lamadi</span>')):'')+
+       '</td><td>'+esc(r.dates)+'</td></tr>';
   });
-  h+='<tr class="tot"><td colspan="4">To\'landi</td><td class="n" colspan="3">'+money(d.paid)+'</td></tr>'+
-     '<tr class="tot"><td colspan="4">Qoldi</td><td class="n" colspan="3">'+money(d.due)+'</td></tr>'+
-     '<tr class="tot"><td colspan="4">Jami</td><td class="n" colspan="3">'+money(d.paid+d.due)+'</td></tr></table>'+
+  h+='<tr class="tot"><td colspan="4">To\'landi</td><td class="n" colspan="4">'+money(d.paid)+'</td></tr>'+
+     '<tr class="tot"><td colspan="4">Qoldi</td><td class="n" colspan="4">'+money(d.due)+'</td></tr>'+
+     '<tr class="tot"><td colspan="4">Jami</td><td class="n" colspan="4">'+money(d.paid+d.due)+'</td></tr></table>'+
      '<h2>Oylik tushum</h2><table><tr><th>Oy</th><th class="n">Tushum</th></tr>';
   st.rows.forEach(function(r){h+='<tr><td>'+r[0]+'</td><td class="n">'+money(r[1])+'</td></tr>';});
   h+='<tr class="tot"><td>Jami</td><td class="n">'+money(st.total)+'</td></tr>'+
